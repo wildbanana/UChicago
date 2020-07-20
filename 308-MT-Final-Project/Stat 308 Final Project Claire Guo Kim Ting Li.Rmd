@@ -1,0 +1,496 @@
+---
+title: "STAT 308 Final Project"
+author: "Kim Ting Li, Claire Guo"
+date: "May 22, 2018"
+output: pdf_document
+---
+```{r}
+library("R.matlab")
+Subject = readMat("./data-starplus-04847-v7.mat")
+n = Subject$meta[[3]] # number of voxels = 4698
+voxel_coords = Subject$meta[[1]] # n-by-3 matrix with voxel_coords[i,] = (x,y,z) coordinates of voxel #i
+voxel_activity = list()
+whichfirst = picture_sentence_agree = rep(0,54)
+i = 0
+for(ind in which(Subject$info[1,,]>1)){
+	i = i+1
+	voxel_activity[[i]] = Subject$data[[ind]][[1]][1:54,] # discarding data after 54th image to make them all the same length
+	whichfirst[i] = (Subject$info[14,,ind]=='S')
+	picture_sentence_agree[i] = (Subject$info[1,,ind]==2)
+}
+
+ROI_names = unlist(Subject$meta[[16]][1,,])[-4]
+ROI_voxels = rep(0,n); for(i in 1:n){tmp = which(ROI_names == c(Subject$meta[[17]][[i]][[1]]));
+# ROI_voxels[i] = 0 if voxel i is not assigned to any ROI
+if(length(tmp)>0){ROI_voxels[i]=tmp}} 
+```
+
+```{r}
+n_ROI=length(ROI_names) #number of ROIs
+#make a matrix with the number of voxels in each ROI
+n_voxels_in_ROI=matrix(NA,2,n_ROI) 
+for (i in 1:n_ROI) {
+  n_voxels_in_ROI[1,i]=i
+  n_voxels_in_ROI[2,i]=sum(ROI_voxels==i)
+}
+#first row is the ROI index, second is number of voxels
+n_voxels_in_ROI
+```
+
+```{r}
+library(MASS)
+# function to generate cov matrix with diagonal 1 and same cov n
+gen_sigma <- function(cov,n){
+  s = matrix(rep(cov,n^2), nrow = n)
+  diag(s) <- 1
+  return(s)
+}
+#generate a vector with half null and half signals
+generate<-function(total_n,n,cov){
+  null_n=total_n-n
+  null=runif(null_n,0,1)
+  z = mvrnorm(1, mu = rep(2,n), gen_sigma(cov,n))
+  sig=pnorm(-abs(z))
+  P=c(null,sig) 
+  return(P)
+}
+```
+
+```{r}
+group_adaptive_BH<-function(P,group_sizes,alpha,gamma,signal){
+  a=length(group_sizes)
+  pi<-c()
+  p_til<-c()
+  #split into groups of different sizes (vector n)
+  g<-split(P, rep(seq_along(group_sizes), group_sizes)) 
+  for (i in 1:a){
+   pi[i]<-sum(g[[i]]>gamma)/(group_sizes[i]*(1-gamma)) 
+  }
+    for (i in 1:a){
+    for (j in 1:group_sizes[i]){
+        temp=g[[i]][j]*pi[i] 
+        p_til=c(p_til,temp)  
+        }#how to write a continuous p_til
+      }
+  for (i in 1:length(P)){
+    if(p_til[i]>gamma){
+      p_til[i]=Inf
+    }
+  }
+  k = max(which(sort(p_til)<=(1:length(P))/length(P) * alpha))
+  power=sum(p_til[which(signal==1)] <= alpha*k/length(P))/max(sum(signal),1)
+  FDP=sum(signal[which(p_til <= alpha*k/length(P))]==0)/max(sum(p_til <= alpha*k/length(P)),1)
+  output=c(FDP,power)
+  return(output)
+}
+set.seed(123)
+```
+
+
+```{r}
+#rep 250, uniform 0.5 corr, 50% null
+rep=250
+FDP.rep<-c()
+power.rep<-c()
+total_n=n_voxels_in_ROI[2,]
+n_sig=round(n_voxels_in_ROI[2,]*0.5)
+n_null=n_voxels_in_ROI[2,]-n_sig
+for (j in 1:rep){
+total_p<-c()
+sig_position<-c()
+for (i in 1:n_ROI){
+  p <- generate(total_n[i],n_sig[i],0.5)
+  total_p <- c(total_p,p)
+  sig_pos <- c(rep(0,n_null[i]),rep(1,n_sig[i]))
+  sig_position<-c(sig_position,sig_pos)
+}
+FDP.rep[j]=group_adaptive_BH(total_p,total_n,0.05,0.5,sig_position)[1]
+power.rep[j]<-group_adaptive_BH(total_p,total_n,0.05,0.5,sig_position)[2]}
+mean(FDP.rep)
+mean(power.rep)
+```
+
+```{r message=FALSE}
+#rep 250, uniform 0.9 corr, 50% null
+FDP.rep<-c()
+power.rep<-c()
+total_n=n_voxels_in_ROI[2,]
+n_sig=round(n_voxels_in_ROI[2,]*0.5)
+n_null=n_voxels_in_ROI[2,]-n_sig
+for (j in 1:rep){
+total_p<-c()
+sig_position<-c()
+for (i in 1:n_ROI){
+  p <- generate(total_n[i],n_sig[i],0.9)
+  total_p <- c(total_p,p)
+  sig_pos <- c(rep(0,n_null[i]),rep(1,n_sig[i]))
+  sig_position<-c(sig_position,sig_pos)
+}
+FDP.rep[j]=group_adaptive_BH(total_p,total_n,0.05,0.5,sig_position)[1]
+power.rep[j]<-group_adaptive_BH(total_p,total_n,0.05,0.5,sig_position)[2]}
+mean(FDP.rep)
+mean(power.rep)
+```
+
+```{r}
+#rep 250, uniform 0.1 corr, 50% null
+FDP.rep<-c()
+power.rep<-c()
+total_n=n_voxels_in_ROI[2,]
+n_sig=round(n_voxels_in_ROI[2,]*0.5)
+n_null=n_voxels_in_ROI[2,]-n_sig
+for (j in 1:rep){
+total_p<-c()
+sig_position<-c()
+for (i in 1:n_ROI){
+  p <- generate(total_n[i],n_sig[i],0.1)
+  total_p <- c(total_p,p)
+  sig_pos <- c(rep(0,n_null[i]),rep(1,n_sig[i]))
+  sig_position<-c(sig_position,sig_pos)
+}
+FDP.rep[j]=group_adaptive_BH(total_p,total_n,0.05,0.5,sig_position)[1]
+power.rep[j]<-group_adaptive_BH(total_p,total_n,0.05,0.5,sig_position)[2]}
+mean(FDP.rep)
+mean(power.rep)
+```
+
+```{r}
+#rep 250, uniform 0.1 corr, 50% null
+FDP.rep<-c()
+power.rep<-c()
+total_n=n_voxels_in_ROI[2,]
+n_sig=round(n_voxels_in_ROI[2,]*0.1)
+n_null=n_voxels_in_ROI[2,]-n_sig
+for (j in 1:rep){
+total_p<-c()
+sig_position<-c()
+for (i in 1:n_ROI){
+  p <- generate(total_n[i],n_sig[i],0.5)
+  total_p <- c(total_p,p)
+  sig_pos <- c(rep(0,n_null[i]),rep(1,n_sig[i]))
+  sig_position<-c(sig_position,sig_pos)
+}
+FDP.rep[j]=group_adaptive_BH(total_p,total_n,0.05,0.5,sig_position)[1]
+power.rep[j]<-group_adaptive_BH(total_p,total_n,0.05,0.5,sig_position)[2]}
+mean(FDP.rep)
+mean(power.rep)
+```
+
+```{r}
+#rep 250, uniform 0.9 corr, 50% null
+FDP.rep<-c()
+power.rep<-c()
+total_n=n_voxels_in_ROI[2,]
+n_sig=round(n_voxels_in_ROI[2,]*0.9)
+n_null=n_voxels_in_ROI[2,]-n_sig
+for (j in 1:rep){
+total_p<-c()
+sig_position<-c()
+for (i in 1:n_ROI){
+  p <- generate(total_n[i],n_sig[i],0.5)
+  total_p <- c(total_p,p)
+  sig_pos <- c(rep(0,n_null[i]),rep(1,n_sig[i]))
+  sig_position<-c(sig_position,sig_pos)
+}
+FDP.rep[j]=group_adaptive_BH(total_p,total_n,0.05,0.5,sig_position)[1]
+power.rep[j]<-group_adaptive_BH(total_p,total_n,0.05,0.5,sig_position)[2]}
+mean(FDP.rep)
+mean(power.rep)
+```
+
+
+##real data covariance matrix
+```{r}
+#real covariance matrix from the data
+real_cov=cov(voxel_activity[[1]]) 
+#generate a random mix of signals and nulls based on the real data covariance
+full_p<-function(cov,prop_null){
+  z_all = mvrnorm(1, mu = rep(2,ncol(cov)), cov)
+  sig_all=pnorm(-abs(z_all))
+  null=sample(1:ncol(cov),round(ncol(cov)*prop_null))
+  n_null=round(ncol(cov)*prop_null)
+  sig_pos=rep(1,ncol(cov))
+  sig_pos[null]<-0
+  sig_all[null]<-runif(n_null,0,1)
+  #this line sort the generated p values into ROIs
+  sig_all=sig_all[order(ROI_voxels)] 
+  #first list element is the p values 
+  #second is indicating if it is signal, 1 signal, 0 null
+  return(list(sig_all,sig_pos))
+}
+
+```
+
+```{r}
+#prop_null=proportion of null
+#cov is covariance matrix
+#total_n is number of voxels in each ROI aka group sizes vector
+#alpha is usually 0.05
+#gamma is the cutoff line for significance tested in group
+iteration<-function(rep,prop_null,cov,total_n,alpha,gamma){
+FDP.rep<-c()
+power.rep<-c()
+for(j in 1:rep){
+full_matrix=full_p(cov,prop_null)
+FDP.rep[j]=group_adaptive_BH(full_matrix[[1]],total_n,alpha,gamma,full_matrix[[2]])[1]
+power.rep[j]<-group_adaptive_BH(full_matrix[[1]],total_n,alpha,gamma,full_matrix[[2]])[2]}
+return(list(mean(FDP.rep),mean(power.rep)))}
+
+#number of voxels in each ROI
+#7 voxels were not assigned to any ROI before
+#now we put them back
+n_voxels_in_ROI_all=matrix(NA,2,n_ROI+1) 
+for (i in 0:n_ROI) {
+  n_voxels_in_ROI_all[1,i+1]=i
+  n_voxels_in_ROI_all[2,i+1]=sum(ROI_voxels==i)
+}
+n_voxels_in_ROI_all
+total_n_all=n_voxels_in_ROI_all[2,]
+
+iteration(10,0.2,real_cov,total_n_all,0.05,0.5)
+```
+
+```{r}
+iteration(10,0.05,real_cov,total_n_all,0.05,0.5)
+```
+
+```{r}
+iteration(10,0.5,real_cov,total_n_all,0.05,0.5)
+```
+
+
+##real data cov matrix with regular BH modified by certain parameter
+```{r}
+#this is a slight modification of full_p function
+#this will not sort the voxels by its ROIs
+full_p_nogroup<-function(cov,prop_null){
+  z_all = mvrnorm(1, mu = rep(2,ncol(cov)), cov)
+  sig_all=pnorm(-abs(z_all))
+  null=sample(1:ncol(cov),round(ncol(cov)*prop_null))
+  n_null=round(ncol(cov)*prop_null)
+  sig_pos=rep(1,ncol(cov))
+  sig_pos[null]<-0
+  sig_all[null]<-runif(n_null,0,1)
+  #first list element is the p values and second is indicating if it is signal, 1 signal, 0 null
+  return(list(sig_all,sig_pos))
+}
+
+#regular BH function
+regular_BH<-function(P,alpha,signal,c){
+  k = max(which(sort(P)<=(1:length(P))/length(P) * alpha*c))
+  power=sum(P[which(signal==1)] <= alpha*k*c/length(P))/max(sum(signal),1)
+  FDP=sum(signal[which(P <= alpha*k*c/length(P))]==0)/max(sum(P <= alpha*k*c/length(P)),1)
+  output=c(FDP,power)
+  return(output)
+}
+
+iteration_regular<-function(rep,prop_null,cov,alpha,c){
+FDP.rep<-c()
+power.rep<-c()
+for(j in 1:rep){
+full_matrix=full_p_nogroup(cov,prop_null)
+FDP.rep[j]=regular_BH(full_matrix[[1]],alpha,full_matrix[[2]],c)[1]
+power.rep[j]<-regular_BH(full_matrix[[1]],alpha,full_matrix[[2]],c)[2]}
+return(list(mean(FDP.rep),mean(power.rep)))}
+
+#regular BH without modification
+iteration_regular(1,0.5,real_cov,0.05,1)
+```
+
+```{r}
+#regular BH with factor of 3
+iteration_regular(1,0.5,real_cov,0.05,3)
+```
+
+```{r}
+#regular BH with factor of 2
+iteration_regular(1,0.5,real_cov,0.05,2)
+```
+
+```{r}
+plot_interval=seq(1,3,by=0.1)
+plot_FDR=c()
+plot_power=c()
+for (i in 1:21){
+temp=iteration_regular(1,0.5,real_cov,0.05,plot_interval[i])
+plot_FDR=c(plot_FDR,temp[[1]])
+plot_power=c(plot_power,temp[[2]])}
+
+plot(plot_interval,plot_FDR,type = "l",col="blue",xlab = "factor value", ylab = "", ylim = c(0,0.7))
+abline(h=0.05,col="red")
+points(plot_interval,plot_power,type = "l",col="green")
+```
+```{r}
+plot(plot_interval,plot_FDR,type = "l",col="blue",xlab = "factor value", ylab = "FDR")
+abline(h=0.05,col="red")
+plot(plot_interval,plot_power,type = "l",col="blue",xlab = "factor value", ylab = "power")
+```
+
+
+##Spatial Correlation
+```{r}
+voxel_coords = Subject$meta[[1]]
+dist = as.matrix(dist(voxel_coords))
+const = .5
+rho_dist = const^((dist^2))
+
+full_matrix=full_p_nogroup(rho_dist,0.5)
+spatial_regular_BH=regular_BH(full_matrix[[1]],0.05,full_matrix[[2]],1)
+spatial_regular_BH
+
+iteration_regular(1,0.5,rho_dist,0.05,1)
+
+
+plot_interval=seq(1,3,by=0.1)
+plot_FDR_rho=c()
+plot_power_rho=c()
+for (i in 1:21){
+temp=iteration_regular(1,0.5,rho_dist,0.05,plot_interval[i])
+plot_FDR_rho=c(plot_FDR_rho,temp[[1]])
+plot_power_rho=c(plot_power_rho,temp[[2]])}
+
+plot(plot_interval,plot_FDR,type = "l",col="blue",xlab = "factor value", ylab = "", ylim = c(0,0.7))
+abline(h=0.05,col="red")
+points(plot_interval,plot_FDR_rho,type = "l",col="green")
+points(plot_interval,plot_power,type = "b",col="blue")
+points(plot_interval,plot_power_rho,type = "b",col="green")
+```
+
+```{r}
+plot(plot_interval,plot_FDR,type = "l",col="blue",xlab = "factor value", ylab = "FDR")
+abline(h=0.05,col="red")
+points(plot_interval,plot_FDR_rho,type = "l",col="green")
+```
+```{r}
+plot(plot_interval,plot_power,type = "l",col="blue",xlab = "factor value", ylab = "power",ylim =c(0.3,0.7))
+points(plot_interval,plot_power_rho,type = "l",col="green")
+```
+
+```{r}
+library(knitr)
+x=data.frame(plot_interval,plot_FDR,plot_FDR_rho,plot_power,plot_power_rho)
+kable(x,col.names = c("factor c","FDR","FDR (spatial)","power","power (spatial)"))
+```
+
+
+##Reduce the dimensions by clustering close voxels together:
+```{r}
+#coordinates matrix
+position_matrix <- Subject$meta[[1]]
+#calculate distance between each pair of voxels - voxel index
+distance.matrix=as.matrix(dist(position_matrix))
+
+#use a subset of data to verify 
+M=distance.matrix[1:10,1:10]
+#put voxels that has distance less than the cutoff into the same cluster, exclusively
+cluster_dist<-function(M,cutoff){
+  cluster<-list()
+  for (i in 1:ncol(M)){
+    temp<-c()
+    for (j in 1:nrow(M)){
+      if(M[j,i]>=0){
+      if(M[j,i]<= cutoff){temp<-c(temp,j)}}
+    }
+      cluster[[i]]=temp
+      M[temp,]=-1
+  }
+  return(cluster)
+}
+
+```
+
+```{r}
+#obtain a list of clusters, within 3 voxels
+clusters=cluster_dist(distance.matrix,3)
+#remove the null elements in the list
+non_null_clusters=Filter(Negate(is.null), clusters) 
+#total number of clusters
+length(non_null_clusters)
+```
+
+```{r}
+#reduce the dim
+#use minimum p to represent the cluster
+cluster_BH<-function(clusters,P,signal,c){
+  P_reduced=c()
+  sig_pos_reduced=c()
+  for(i in 1:length(clusters)){
+    P_til=c()
+    for(j in 1:length(clusters[[i]])){
+      temp=P[clusters[[i]][j]]
+      P_til=c(P_til,temp)
+    }
+    P_reduced=c(P_reduced,P[clusters[[i]][which.min(P_til)]])
+    sig_pos_reduced=c(sig_pos_reduced,signal[clusters[[i]][which.min(P_til)]])
+  }
+  regular_BH(P_reduced,0.05,sig_pos_reduced,c)
+}
+
+matrix_cluster=full_p_nogroup(real_cov,0.5)
+cluster_BH(clusters,matrix_cluster[[1]],matrix_cluster[[2]],1)
+```
+
+```{r}
+matrix_cluster=full_p_nogroup(real_cov,0.8)
+cluster_BH(clusters,matrix_cluster[[1]],matrix_cluster[[2]],1)
+```
+
+
+```{r cashe=T}
+#iteration_cluster<-function(clusters,rep,prop_null,cov,c){
+#FDP.rep<-c()
+#power.rep<-c()
+#for(j in 1:rep){
+#full_matrix=full_p_nogroup(cov,prop_null)
+#FDP.rep[j]=cluster_BH(clusters,full_matrix[[1]],full_matrix[[2]],c)[1]
+#power.rep[j]<-cluster_BH(clusters,full_matrix[[1]],full_matrix[[2]],c)[2]}
+#return(list(mean(FDP.rep),mean(power.rep)))}
+
+
+#plot_interval=seq(1,3,by=0.1)
+#plot_FDR_cluster=c()
+#plot_power_cluster=c()
+#for (i in 1:21){
+#temp=iteration_cluster(clusters,1,0.5,real_cov,plot_interval[i])
+#plot_FDR_cluster=c(plot_FDR_cluster,temp[[1]])
+#plot_power_cluster=c(plot_power_cluster,temp[[2]])}
+```
+
+##real data-compare Picture first to Sentence first for trial 1
+```{r}
+real_p=c()
+for (i in 1:4698){
+  temp=t.test(voxel_activity[[1]][1:27,i],voxel_activity[[1]][28:54,i],paired = TRUE,alternative = "two.sided")
+  real_p=c(real_p,temp$p.value)
+}
+
+realdata_BH<-function(P,alpha,c){
+  k = max(which(sort(P)<=(1:length(P))/length(P) * alpha*c))
+  sig=which(P <= alpha*k*c/length(P))
+  return(sig)
+}
+
+discovery1=realdata_BH(real_p,0.05,1.6)
+length(discovery1)
+```
+
+
+```{r}
+cluster_BH<-function(clusters,P,c){
+  P_reduced=c()
+  for(i in 1:length(clusters)){
+    P_til=c()
+    for(j in 1:length(clusters[[i]])){
+      temp=P[clusters[[i]][j]]
+      P_til=c(P_til,temp)
+    }
+    P_reduced=c(P_reduced,P[clusters[[i]][which.min(P_til)]])
+  }
+  realdata_BH(P_reduced,0.05,c)
+}
+
+
+discovery2=cluster_BH(clusters,real_p,1)
+length(discovery2)
+```
+

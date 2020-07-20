@@ -1,0 +1,104 @@
+---
+title: "Final Project 37810--Gibbs Sampling"
+author: ""
+date: "October 28, 2015"
+output: pdf_document
+---
+
+```{r}
+Gibbs_<-function(x0,y0,iterations,B=5,burnIn=0)
+## 5 parameters are needed in this function, with B=5 and burnIn=0 by default
+{
+  if(x0>0&&x0<B&&y0>0&&y0<B)
+## to check whether the starting values are in the domain.    
+  {
+    x<-c(x0,rep(NA,iterations-1))
+## Initialize the Markov chain    
+    y<-c(y0,rep(NA,iterations-1))
+## Initialize the Markov chain    
+    for(i in 1:(iterations-1))
+    {
+      x[i+1]<-(-log(1-runif(1)*(1-exp(-y[i]*B)))/y[i])
+## use inverse transform sampling to draw sample from conditional distribution 
+## p(x^{i+1}|y^{i})   
+      y[i+1]<-(-log(1-runif(1)*(1-exp(-x[i+1]*B)))/x[i+1])
+## use inverse transform sampling to draw sample from conditional distribution 
+## p(y^{i+1}|x^{i+1})     
+    }
+    if(burnIn>0)
+    {
+        x<-x[-(1:burnIn)]
+        y<-y[-(1:burnIn)]
+        print(length(x))
+## discard the first bunch of draws for the burn-in process    
+    }
+    return(data.frame(x,y))
+  }
+ else
+   stop("Initial values incorrect")
+## print the information for incorrect starting values  
+}
+```
+To estimate the marginal distribution generated from the conditional distributions using Gibbs sampling, we first pick up the starting values for $X$ and $Y$. Denote them as `x0` and `y0`. `iterations` stands for the number of draws we want to get from Gibbs sampling. `B` is the number given in the exercise, which is 5 here. `burnIn` is the number of draws we want to discard for the burn-in process, the default for `burnIn` is 0.  
+  
+In this case, both the conditional distribution of $X|Y$ and $Y|X$ are truncated exponential distribution. The domains of both conditional pdf's are $[0,B]$. So the starting values should satisfy $0<$`x0`$<B$ and $0<$`y0`$<B$. Therefore I put a restriction `if(x0>0&&x0<B&&y0>0&&y0<B)` on the input of starting values to check if they satisfy the requirement.  
+  
+
+Since $$ p(x|y)\propto ye^{-yx}, 0<x<B  $$ $$p(y|x)\propto xe^{-yx}, 0<y<B$$
+Consider $p(x|y)$ only. To get samples using inverse transform sampling, first we need to figure out the normalizing constant for the conditional pdf and then the inverse function of cdf.  
+  
+The normalizing constant can be calculated using the formula $c=\frac{1}{\int f(x|y)\,\mathrm{d}x}$, if $p(x|y)$ $\propto$ $f(x|y)$. In this case, $f(x|y)=ye^{-yx}, 0<x<B$. Therefore $c=\frac{1}{\int_0^B ye^{-yx}\,\mathrm{d}x}=\frac{1}{1-e^{-By}}$.   
+  
+Then we start to calculate the cdf $H(x|y)$ for $X|Y$.   
+We have $$p(x|y)=\frac{ye^{-yx}}{1-e^{-By}} , 0<x<B $$ 
+Using the formula $F(x)=\int_{-\infty}^x p(z)\,\mathrm{d}z$, we get the cdf of $X|Y$: $$F(x|y)=\frac{1-e^{-xy}}{1-e^{-By}}, 0<x<B$$
+  
+Then we can write down the inverse function of $F(x|y)$, Denote as $F^{-1}(u|y), where  0\leq u\leq 1$.   
+We have: $$F^{-1}(u|y)=-\frac{log(1-u(1-e^{-By}))}{y}, 0\leq u\leq 1$$  
+According to inverse transform sampling, to draw a sample from $p(x|y)$, we first generate $u$ from $Unif[0,1]$, then $x=F^{-1}(u|y)$ is from the conditional distribution of X|Y. 
+  
+We draw samples from $p(y|x)$ using the same method.  
+  
+  
+Now we start generating samples from p(x,y).  
+  
+Here I start Gibbs sampling with `x0` and `y0`, draw a value $x^{(1)}$ from the full conditional $p(x|$ `y0` $)$ using inverse transform sampling. Then use the updated $x^{(1)}$ to draw a sample from  $p(y|x^{(1)})$.  
+  
+To get more samples using Gibbs sampling, continually use the most updated values of $x$ and $y$ when generating samples from conditional distribution. To be more specific, generate $x^{(i+1)}$ from $p(x|y^{(i)})$ and $y^{(i+1)}$ from $p(y|x^{(i+1)})$. Repeat it for $n=$ `iterations` times.  
+  
+For the burn-in process, discard the first $m=$ `burnIn` samples from the Markov chain to reduce the influence of starting values on the Markov chain.  
+
+For $B=5$ and sample size $T=500, 5000, 50000$,to see the histogram of of values for x generated from Gibbs sampling, We have:
+```{r}
+par(mfrow=c(1,3))
+x<-Gibbs_(1,2,50000,B=5,burnIn=0)
+hist(x[1:500,1],breaks=60, main="Histogran of X, T=500 ",xlab="X")
+hist(x[1:5000,1],breaks=60, main="Histogran of X, T=5000 ",xlab="X")
+hist(x[1:50000,1],breaks=60, main="Histogran of X, T=50000 ",xlab="X")
+```
+
+Here I picked up the starting values arbitrarily.   
+  
+The plots above shows that as T increases, the histogram tend to be more smooth.   
+  
+Use the mean of the generated samples to estimate the expectation of $X$.
+```{r}
+set.seed(123)
+mean_500<-c()
+mean_5000<-c()
+mean_50000<-c()
+for(i in 1:10)
+{
+  x<-Gibbs_(1,2,50000,B=5,burnIn=0)
+  mean_500<-c(mean_500,mean(x[1:500,1]))
+  mean_5000<-c(mean_5000,mean(x[1:5000,1]))
+  mean_50000<-c(mean_50000,mean(x[1:50000,1]))
+}
+mean_500
+mean_5000
+mean_50000
+c(var(mean_500),var(mean_5000),var(mean_50000))
+```
+As we can see, the mean is around 1.26, as sample size $T$ increases, the variance of the estimator also decreases.
+
+  

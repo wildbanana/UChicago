@@ -1,0 +1,172 @@
+---
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#K-means
+
+##The algorithm for the k-means implementation is the following:
+
+(1) Select n=3 random observations in the data, assign a label for each of one and regard them as the centroid for their respective classification.
+(2) Compute the euclidean distance of all other observations to these initial centroids, and assign each to the label corresponding to the closest centroid.
+(3) Calculate new centroids for each label based on this initial labeling.
+(4) Compute the euclidean distance of all observations to these new centroids, and relabel them to the corresponding label to the closest centroid.
+(5) Calculate new centroids again for each label.
+(6) Repeat steps (4) and (5) until the labels do not change. The resulting labels are the final labels for each observation.
+
+Note: Compared to the k-means implementation in R taking the same single realization for the random starting centroids (that is, setting the same seed), the only difference between both is that somehow R's k-means always assigns the labels in a very similar way as in the original data, while the above one arrives to the same clusters but with different labels each time.
+
+The following code chunks below show the code for the algorithm:
+
+```{r Setup1}
+library(rattle.data)
+data(wine)
+data(iris)
+```
+
+```{r Setup2}
+library(fpc)
+```
+
+```{r Setup3}
+newwine<-as.matrix(wine) #Transform data into numeric (necessary for the function to work)
+class(newwine)<-"numeric"
+newwine<-data.frame(newwine)
+newwine<-scale(newwine)
+newiris<-as.matrix(iris)
+species<-newiris[,ncol(newiris)] #Assign numeric codes to species
+for (i in 1:length(species)) {
+  if (species[i]=="setosa") {
+    species[i]<-1
+  } else if (species[i]=="versicolor") {
+    species[i]<-2
+  } else {
+    species[i]<-3
+  }
+}
+class(species)<-"numeric" 
+newiris<-newiris[,-ncol(newiris)] #Transform the Iris DB so it is similar to the wine one
+newiris<-cbind(species,newiris)
+class(newiris)<-"numeric"
+```
+
+```{r Distance}
+eucdist<-function(x,y) { #Euclidean distance
+  x_y2<-(x-y)*(x-y)
+  eucdist<-sqrt(sum(x_y2))
+  return(eucdist)
+}
+```
+
+```{r kmeans}
+truetypes<-function(x) { #Returns a vector with the true types
+  trueclass<<-as.matrix(x)
+  trueclass<<-trueclass[,1]
+}
+randomcentertype<-function(x,n=3) { #Selects observations as random to act as centroids.
+  ddb<<-x
+  ddb<<-ddb[,-1]
+  randomcentroidtype<<-ddb[sample(nrow(ddb),n),]
+  randomcentroidtype<<-t(randomcentroidtype)
+  class(randomcentroidtype)<<-"numeric"
+  return(randomcentroidtype)
+}
+centertype<-function(x,currtypes) { 
+#Returns the centroids, based on the mean, corresponding to given labels
+  dd<<-x
+  dd<<-dd[,-1]
+  dd<<-cbind(currtypes,dd)
+  centroidtype<<-aggregate(dd,(by=list(Type=dd[,1])),FUN = function(x) mean(as.numeric(as.character(x))))
+  centroidtype<<-centroidtype[,-1:-2]
+  centroidtype<<-t(centroidtype)
+  class(centroidtype)<<-"numeric"
+  return(centroidtype)
+}
+selectype<-function(x,r1=randomcentertype(x)[,1],r2=randomcentertype(x)[,2],r3=randomcentertype(x)[,3]) { 
+#Represents a single iteration, relabels observations to the label corresponding to 
+#the closest centroid 
+#If no centroids are provided, the function randomcentertype picks 3 at random.
+  bd<<-as.matrix(x)
+  bd<<-bd[,-1]
+  bd<<-t(bd)
+  class(bd)<<-"numeric"
+  types<<-c()
+  for (i in 1:nrow(x)) {
+    if (min(c(eucdist(bd[,i],r1),eucdist(bd[,i],r2),eucdist(bd[,i],r3)))==eucdist(bd[,i],r1)) {
+      types<<-c(types,1)
+    } else if (min(c(eucdist(bd[,i],r1),eucdist(bd[,i],r2),eucdist(bd[,i],r3)))==eucdist(bd[,i],r2)) {
+      types<<-c(types,2)
+    } else {
+      types<<-c(types,3)
+    }
+  }
+  return(types)
+}
+kavg<-function(x,n=25,m=3) { 
+#Actual k-means function. First part is an initialization.
+#since the result depends on the starting point, an attempt was made to make it more similar to
+#the native R kmeans function which allows the user to pick several random starting points
+#and returns the best result. However, there are no details on how does the native R kmeans 
+#function evaluate which result is the "best" so it was not possible to try to include that 
+#as an option.
+  tipos<<-cbind2(0,selectype(x)) #First iteration using random centroids for the labels.
+  trueclass<<-truetypes(x)
+  class(trueclass)<<-"numeric"
+  i<-2
+  while (eucdist(tipos[,i-1],tipos[,i])>0) { 
+#While loop which continues iterating and choosing labels until the labels do not change.
+#Euclidean distance can be used since the labels are numeric.
+    datos<<-as.matrix(x)
+    datos<<-datos[,-1]
+    datos<<-cbind2(tipos[,ncol(tipos)],datos)
+    datos<<-data.frame(datos)
+    currentcenter<<-centertype(datos,tipos[,ncol(tipos)])
+    tipos<<-cbind2(tipos,selectype(datos,currentcenter[,1],currentcenter[,2],currentcenter[,3]))
+    i<-i+1
+  }
+  finaltype<<-tipos[,ncol(tipos)] #Returns final labels, states how many iterations it took.
+  class(finaltype)<<-"numeric"
+  return(finaltype)
+}
+```
+
+##Part (a)
+
+To compare with the true labels, since the algorithm assigns arbitrary labels, it is preferable to simply compare the resulting plots from using the algorithm with that resulting from using the true labels as the input over constructing 2-way tables, as is done in the plots below:
+
+```{r PartA}
+plotcluster(wine[,-1],kavg(wine),main="Clusters using the proposed k-means algorithm")
+plotcluster(wine[,-1],truetypes(wine),main="Clusters using the true labels")
+```
+
+The clusters are not similar to those formed by the real labels, with the resulting clusters showing a higher overlap with each other than in the true ones.
+
+##Part (b)
+
+The scale() function scales the data numeric data so it is expressed as deviation from its means divided over the standard deviation for the corresponding variable.
+
+When scaling the data, the resulting clusters are much closer to the clusters formed by the true labels, as shown in the plots below:
+
+```{r PartB}
+plotcluster(newwine[,-1],kavg(newwine),main="Clusters of scaled wine data using the proposed k-means algorithm")
+plotcluster(newwine[,-1],truetypes(newwine),main="Clusters of scaled wine data using the true labels")
+```
+
+Note that even though the clustering is more similar, the resulting plot can be equivalent to a rotation of that using the true labels. This is because a random starting point is used.
+
+##Part (c)
+
+```{r PartC}
+plotcluster(newiris[,-1],kavg(newiris),main="Clusters using the proposed k-means algorithm")
+plotcluster(scale(newiris[,-1]),kavg(scale(newiris)),main="Clusters of scaled iris data using the proposed k-means algorithm")
+plotcluster(newiris[,-1],truetypes(newiris),main="Clusters using the true labels")
+```
+
+As shown in the plots above, the k-means algorithm seems to work much better than when using the wine dataset, as the clustering is similar to that from using the true labels.
+
+When scaling the data, the clustering does not suffer any major changes, which suggests the original data was already scaled.
+
+As in Part (b), note that even though the clustering is similar, the resulting plot can be equivalent to a rotation of that using the true labels. This is because a random starting point is used.

@@ -1,0 +1,6 @@
+---
+title: "License"
+---
+
+The copyright is maintained by the individual contributors.
+The material is released under the [Creative Commons Attribution 4.0 license](https://creativecommons.org/licenses/by/4.0/).

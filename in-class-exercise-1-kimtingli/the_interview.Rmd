@@ -1,0 +1,15 @@
+---
+title: "interview"
+output: html_document
+---
+## Seulmin Yang
+- Seulmin is from **Korea**  # Is she really? Are you sure?
+- Seulmin has a bachelor's degree in _business_
+- Seulmin has ~~programming experience~~ 
+- Seulmin loves **sleeping and _eating_**
+- Seulmin's favorite math equation is ${1+1}$
+
+```{r}
+hoursSlept<-c(5,4,6,5,5)
+plot(hoursSlept, main="Time Slept in the Past 5 Days", ylab="Hours", xlab="Days")
+```

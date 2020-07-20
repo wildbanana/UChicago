@@ -1,0 +1,15 @@
+---
+title: "My Git Story"
+output: html_document
+---
+
+### My name is Kim Li, and this is my Git story.
+
+### Github is a version control system. It allows you to modify files without losing track of what have changed. More importantly, it simplifies the process of collaboration. Github remembers everyone's edits for a particular file while allowing you to choose what changes you want to incorprate. By using Github, one can work on their own files locally, get feedbacks and edits from others and keep a history of everything that has ever happened to the file in case a reversion is ever needed (or simply to review the thought process during the creation of the file). 
+
+### I have worked in a neuroscience lab under anthropology department for the past three years and published several articles with my principal investigator (PI). Our work often involve collaborators in other departments, other universities or even other countries. I remember we wrote one manuscript in 15 different versions. Since my PI is a social science professor, we never explored a more "techy" way to manage our files. Instead, we used the old-fashioned method of version control:copy, paste and edit. However, each version required a slightly different dataset and generated slightly different graphs. Even though I have done all the analysis first hand, I quickly lost track of the changes I made, as well as the correct version of graphs for each version of the manuscript. The worst part was when the collaborators reviewed and commented on the paper. One of the professor misinterpret our results and made suggestions for additional analyses. Once we have done the changes in both the manuscript and graphs, he corrected himself and asked us to revert back to the previous versions. It was a nightmare to find where we have changed. 
+
+### If I have used Github back then, this would take no time to revert and accurately too. My struggle in matching the version of different file types would not exist either. I have been thinking about the difference it would make since Dr. Burbank introduced us to Github during our first lecture. It would have saved so much of my life!
+
+### I have not really encountered any notable difficulty in installing Github. Even though the version I use on my laptop differ slightly from Dr. Burbank's, the principles are the same. Once I understand the relationship between the branches and the server, how the files are being documented, the rest is intuitive. Also, since I use Dropbox quite extensively, syncing files come as a natural concept. Overall, I am extremely happy to start my Github experience thanks to this course.
+

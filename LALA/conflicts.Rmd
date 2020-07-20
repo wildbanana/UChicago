@@ -1,0 +1,16 @@
+---
+title: "LALA"
+author: "Kim Ting Li"
+date: "October 17, 2017"
+output: pdf_document
+---
+##So this is how we experiment with conflicts in Github.
+
+##I am a second year MS stats student.
+
+#My name is Fangzhou Yang.
+
+##I am a first year MS stats student. 
+
+#My name is Kim Li.
+

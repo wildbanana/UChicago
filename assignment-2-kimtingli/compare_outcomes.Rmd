@@ -1,0 +1,29 @@
+
+source("C:\\Users\\kimli\\Documents\\GitHub\\assignment-2-kimtingli\\functions.R")
+trueA <- 5
+trueB <- 0
+trueSd <- 10
+sampleSize <- 31
+x <- (-(sampleSize-1)/2):((sampleSize-1)/2)
+y <- trueA * x + trueB + rnorm(n=sampleSize,mean=0,sd=trueSd)
+
+compare_outcomes<-function(iteration){
+
+  for (j in 1:10){  
+    
+    startvalue <- rnorm(3,mean = c(5,0,10), sd= c(0.1,0.5,0.3))
+    chain = run_metropolis_MCMC(startvalue, iteration)
+    #print(chain)
+    burnIn = iteration/2 #instead of putting a number here, the burnIn will be adjusted according to the iteration number put in
+    
+    posta=chain[-(1:burnIn),1]
+    #return(posta)
+    amean = mean(posta)
+    asd = sd(posta)
+    print(amean) #print mean first
+    print(asd) #print sd second
+  }
+}
+onethou.it<-compare_outcomes(1000)
+tenthou.it<-compare_outcomes(10000)
+hunthou.it<-compare_outcomes(100000)

@@ -1,0 +1,60 @@
+---
+title: "Bar Plot"
+output: html_document
+---
+
+```{r}
+yearsOfStatistics<-c("none", "1", "2-3", "4-6", "7+")
+numberOfPeople<-c(1,2,5,3,0)
+combined<-data.frame(yearsOfStatistics,numberOfPeople)
+```
+
+Let's make the plot!
+
+```{r}
+barplot(numberOfPeople,names.arg = yearsOfStatistics, xlab = 'Years of Statistics', ylab = 'Number of Students')
+
+```
+
+```{r}
+x<-c("a","b","c","d")
+for (i in 1:4) {
+  print(x[i])
+}
+```
+```{r}
+Fibonacci <- numeric(12)
+Fibonacci[1] <- Fibonacci[2] <- 1
+for (i in 3:12) Fibonacci[i] <- Fibonacci[i-2] + Fibonacci[i-1]
+print(Fibonacci)
+```
+
+```{r}
+a<-18
+if (a %% 2 == 0) print(paste(a, 'It is Even'))
+```
+
+```{r}
+a<-(1:20)
+b<-(1:20)
+for (i in 1:20) {
+ for(j in 1:20)  # could do j in 1:i
+   if (a[i] %% b[j]==0) print(paste(a[i], 'is divisible by',  b[j]))
+}
+```
+
+```{r}
+a<-(1:20)
+for(i in 1:20){
+  b<-paste(a[i], 'is divisible by:')
+  c<- ""
+  for(j in 1:20) {
+    if (a[i] %% j == 0) c<-paste(c,j)
+  }
+  d<-print(paste(b,c))
+}
+```
+
+
+
+

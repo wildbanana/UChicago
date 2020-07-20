@@ -1,0 +1,55 @@
+---
+title: "Home"
+site: workflowr::wflow_site
+output:
+  workflowr::wflow_html:
+    toc: false
+---
+
+
+# Sparse regression
+
+- [Intro to glmnet](glmnet_intro.html)
+
+- [MCMC example and comparison with glmnet](var_select_regression.html)
+
+- [ridge_mle.html](ridge_mle.html)
+
+
+# Smoothing
+
+- [Trend filtering on cell cycle](cell_cycle.html)
+
+
+# Density estimation
+
+- [density_est_cell_cycle.html](density_est_cell_cycle.html)
+
+
+# Normal means
+
+- [Adaptive shrinkage applied to eight schools data](eight_schools.html)
+
+- [Empirical bayes vs soft thresholding example](eb_vs_soft.html)
+
+
+# MCMC
+
+- [Fully Bayes Normal Means exercise (MCMC)](bayes_normal_means.html)	
+
+# HMM
+
+- [hmm_exercise.htm](hmm_exercise.html)
+
+# Gaussian processes
+
+- [GP_example.html](GP_example.html)
+- [GP_cell_cycle.html](GP_cell_cycle.html)
+
+# SVD/PCA
+
+- [svd_zip.html](svd_zip.html)
+- [pca_cell_cycle.html](pca_cell_cycle.html)
+
+	
+	
